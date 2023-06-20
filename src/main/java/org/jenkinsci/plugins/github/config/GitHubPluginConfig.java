@@ -4,7 +4,6 @@ import com.cloudbees.jenkins.GitHubWebHook;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
-import hudson.BulkChange;
 import hudson.Extension;
 import hudson.Util;
 import hudson.XmlFile;
@@ -69,7 +68,7 @@ public class GitHubPluginConfig extends GlobalConfiguration {
             new GitHubPluginConfig(Collections.emptyList());
 
     private List<GitHubServerConfig> configs = new ArrayList<>();
-    private URL hookUrl;
+    private String hookUrl;
     @Deprecated
     private transient HookSecretConfig hookSecretConfig;
     private List<HookSecretConfig> hookSecretConfigs;
@@ -117,10 +116,10 @@ public class GitHubPluginConfig extends GlobalConfiguration {
 
     @DataBoundSetter
     public void setHookUrl(String hookUrl) {
-        if (isEmpty(hookUrl)) {
+        if (isEmpty(hookUrl) || parseHookUrl(hookUrl) == null) {
             this.hookUrl = null;
         } else {
-            this.hookUrl = parseHookUrl(hookUrl);
+            this.hookUrl = hookUrl;
         }
     }
 
@@ -133,12 +132,17 @@ public class GitHubPluginConfig extends GlobalConfiguration {
      * @return hook url used as endpoint to search and write auto-managed hooks in GH
      * @throws GHPluginConfigException if default jenkins url is malformed
      */
-    public URL getHookUrl() throws GHPluginConfigException {
-        if (hookUrl != null) {
-            return hookUrl;
+    public URL getHookUrlObject() throws GHPluginConfigException {
+        URL result = parseHookUrl(hookUrl);
+        if (result != null) {
+            return result;
         } else {
             return constructDefaultUrl();
         }
+    }
+
+    public String getHookUrl() {
+        return hookUrl;
     }
 
     @SuppressWarnings("unused")
@@ -192,28 +196,9 @@ public class GitHubPluginConfig extends GlobalConfiguration {
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
         try {
-            BulkChange bc = new BulkChange(this);
-            try {
-                if (json.has("configs")) {
-                    setConfigs(req.bindJSONToList(GitHubServerConfig.class, json.get("configs")));
-                } else {
-                    setConfigs(Collections.emptyList());
-                }
-                if (json.has("hookSecretConfigs")) {
-                    setHookSecretConfigs(req.bindJSONToList(HookSecretConfig.class, json.get("hookSecretConfigs")));
-                } else {
-                    setHookSecretConfigs(Collections.emptyList());
-                }
-                if (json.optBoolean("isOverrideHookUrl", false) && (json.has("hookUrl"))) {
-                    setHookUrl(json.optString("hookUrl"));
-                } else {
-                    setHookUrl(null);
-                }
-                req.bindJSON(this, json);
-                clearRedundantCaches(configs);
-            } finally {
-                bc.commit();
-            }
+            req.bindJSON(this, json);
+            save();
+            clearRedundantCaches(configs);
         } catch (Exception e) {
             LOGGER.debug("Problem while submitting form for GitHub Plugin ({})", e.getMessage(), e);
             LOGGER.trace("GH form data: {}", json.toString());
@@ -248,24 +233,30 @@ public class GitHubPluginConfig extends GlobalConfiguration {
     public FormValidation doCheckHookUrl(@QueryParameter String value) {
         Jenkins.getActiveInstance().checkPermission(Jenkins.ADMINISTER);
         try {
-            HttpURLConnection con = (HttpURLConnection) new URL(value).openConnection();
+            URL valueAsUrl;
+            if (isEmpty(value)) {
+                valueAsUrl = constructDefaultUrl();
+            } else {
+                valueAsUrl = new URL(value);
+            }
+            HttpURLConnection con = (HttpURLConnection) valueAsUrl.openConnection();
             con.setRequestMethod("POST");
             con.setRequestProperty(GitHubWebHook.URL_VALIDATION_HEADER, "true");
             con.connect();
             if (con.getResponseCode() != 200) {
-                return FormValidation.error("Got %d from %s", con.getResponseCode(), value);
+                return FormValidation.error("Got %d from %s", con.getResponseCode(), valueAsUrl);
             }
             String v = con.getHeaderField(GitHubWebHook.X_INSTANCE_IDENTITY);
             if (v == null) {
                 // people might be running clever apps that aren't Jenkins, and that's OK
                 return FormValidation.warning("It doesn't look like %s is talking to Jenkins. "
-                        + "Are you running your own app?", value);
+                        + "Are you running your own app?", valueAsUrl);
             }
             RSAPublicKey key = identity.getPublic();
             String expected = new String(Base64.encodeBase64(key.getEncoded()), UTF_8);
             if (!expected.equals(v)) {
                 // if it responds but with a different ID, that's more likely wrong than correct
-                return FormValidation.error("%s is connecting to different Jenkins instances", value);
+                return FormValidation.error("%s is connecting to different Jenkins instances", valueAsUrl);
             }
 
             return FormValidation.ok();
@@ -275,7 +266,7 @@ public class GitHubPluginConfig extends GlobalConfiguration {
     }
 
     /**
-     * Used by default in {@link #getHookUrl()}
+     * Used by default in {@link #getHookUrlObject()}
      *
      * @return url to be used in GH hooks configuration as main endpoint
      * @throws GHPluginConfigException if jenkins root url empty of malformed

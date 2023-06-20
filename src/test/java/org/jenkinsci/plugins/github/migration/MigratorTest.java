@@ -62,7 +62,7 @@ public class MigratorTest {
     @LocalData
     public void shouldMigrateHookUrl() {
         assertThat("in plugin - override", GitHubPlugin.configuration().isOverrideHookUrl(), is(true));
-        assertThat("in plugin", valueOf(GitHubPlugin.configuration().getHookUrl()), is(HOOK_FROM_LOCAL_DATA));
+        assertThat("in plugin", valueOf(GitHubPlugin.configuration().getHookUrlObject()), is(HOOK_FROM_LOCAL_DATA));
 
         assertThat("should nullify hook url after migration",
                 GitHubPushTrigger.DescriptorImpl.get().getDeprecatedHookUrl(), nullValue());
@@ -88,7 +88,7 @@ public class MigratorTest {
                 withApiUrl(is(GITHUB_URL))
         ));
         assertThat("should load hook url",
-                GitHubPlugin.configuration().getHookUrl().toString(), equalTo(HOOK_FROM_LOCAL_DATA));
+                GitHubPlugin.configuration().getHookUrlObject().toString(), equalTo(HOOK_FROM_LOCAL_DATA));
     }
 
     @Test

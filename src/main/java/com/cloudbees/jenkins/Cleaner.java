@@ -59,7 +59,7 @@ public class Cleaner extends PeriodicWork {
             return;
         }
 
-        URL url = GitHubPlugin.configuration().getHookUrl();
+        URL url = GitHubPlugin.configuration().getHookUrlObject();
 
         List<GitHubRepositoryName> aliveRepos = from(Jenkins.get().allItems(Item.class))
                 .filter(isAlive())  // live repos

@@ -348,11 +348,11 @@ public class GitHubPushTrigger extends Trigger<Job<?, ?>> implements GitHubTrigg
         /**
          * Returns the URL that GitHub should post.
          *
-         * @deprecated use {@link GitHubPluginConfig#getHookUrl()} instead
+         * @deprecated use {@link GitHubPluginConfig#getHookUrlObject()} instead
          */
         @Deprecated
         public URL getHookUrl() throws GHPluginConfigException {
-            return GitHubPlugin.configuration().getHookUrl();
+            return GitHubPlugin.configuration().getHookUrlObject();
         }
 
         /**
@@ -368,7 +368,7 @@ public class GitHubPushTrigger extends Trigger<Job<?, ?>> implements GitHubTrigg
          * Used only for migration
          *
          * @return null after migration
-         * @deprecated use {@link GitHubPluginConfig#getHookUrl()}
+         * @deprecated use {@link GitHubPluginConfig#getHookUrlObject()}
          */
         @Deprecated
         public URL getDeprecatedHookUrl() {

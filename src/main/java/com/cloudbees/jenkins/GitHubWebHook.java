@@ -133,7 +133,7 @@ public class GitHubWebHook implements UnprotectedRootAction {
                 // We should handle wrong url of self defined hook url here in any case with try-catch :(
                 URL hookUrl;
                 try {
-                    hookUrl = GitHubPlugin.configuration().getHookUrl();
+                    hookUrl = GitHubPlugin.configuration().getHookUrlObject();
                 } catch (GHPluginConfigException e) {
                     LOGGER.error("Skip registration of GHHook ({})", e.getMessage());
                     return job;

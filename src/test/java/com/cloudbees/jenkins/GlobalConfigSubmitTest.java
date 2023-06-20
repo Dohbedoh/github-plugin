@@ -22,7 +22,6 @@ import static org.hamcrest.Matchers.equalTo;
 //@Ignore("Have troubles with memory consumption")
 public class GlobalConfigSubmitTest {
 
-    public static final String OVERRIDE_HOOK_URL_CHECKBOX = "isOverrideHookUrl";
     public static final String HOOK_URL_INPUT = "hookUrl";
 
     private static final String WEBHOOK_URL = "http://jenkinsci.example.com/jenkins/github-webhook/";
@@ -34,24 +33,24 @@ public class GlobalConfigSubmitTest {
     public void shouldSetHookUrl() throws Exception {
         HtmlForm form = globalConfig();
 
-        form.getInputByName(OVERRIDE_HOOK_URL_CHECKBOX).setChecked(true);
         form.getInputByName(HOOK_URL_INPUT).setValue(WEBHOOK_URL);
         jenkins.submit(form);
 
-        assertThat(GitHubPlugin.configuration().getHookUrl(), equalTo(new URL(WEBHOOK_URL)));
+        assertThat(GitHubPlugin.configuration().getHookUrlObject(), equalTo(new URL(WEBHOOK_URL)));
+        assertThat(GitHubPlugin.configuration().getHookUrl(), equalTo(WEBHOOK_URL));
     }
 
     @Test
-    public void shouldResetHookUrlIfNotChecked() throws Exception {
+    public void shouldResetHookUrlIfEmpty() throws Exception {
         GitHubPlugin.configuration().setHookUrl(WEBHOOK_URL);
 
         HtmlForm form = globalConfig();
 
-        form.getInputByName(OVERRIDE_HOOK_URL_CHECKBOX).setChecked(false);
-        form.getInputByName(HOOK_URL_INPUT).setValue("http://foo");
+        form.getInputByName(HOOK_URL_INPUT).setValue("");
         jenkins.submit(form);
 
-        assertThat(GitHubPlugin.configuration().getHookUrl(), equalTo(new URL(WEBHOOK_URL)));
+        assertThat(GitHubPlugin.configuration().getHookUrlObject().toString(), equalTo(new URL(WEBHOOK_URL)));
+        assertThat(GitHubPlugin.configuration().getHookUrl(), equalTo(null));
     }
 
     public HtmlForm globalConfig() throws IOException, SAXException {

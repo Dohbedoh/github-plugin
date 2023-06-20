@@ -36,7 +36,7 @@ public class ConfigAsCodeTest {
 
         assertThat(
                 "getHookUrl() is configured",
-                gitHubPluginConfig.getHookUrl().toString(),
+                gitHubPluginConfig.getHookUrlObject().toString(),
                 is("http://some.com/github-webhook/secret-path")
         );
 
